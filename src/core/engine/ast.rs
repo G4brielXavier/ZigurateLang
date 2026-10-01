@@ -11,8 +11,17 @@ use crate::core::utils::primi::STRT_Zilamma;
 
 
 use crate::core::utils::structures::{
-    TEMEM_Anki, TEMEM_EditLunig, TEMEM_EditVariable, TEMEM_Function, TEMEM_Lunig, TEMEM_TempVariable
+    TEMEM_Anki, 
+    TEMEM_EditLunig, 
+    TEMEM_EditVariable, 
+    TEMEM_Function, 
+    TEMEM_Lunig, 
+    TEMEM_TempVariable, 
+    TEMEM_Maru,
+    TEMEM_Gish
 };
+
+
 use crate::enki_vm::UdaDeclarationType;
 
 
@@ -34,6 +43,7 @@ impl<'a> AST<'a> {
     pub fn open(tokens: Vec<Token<'a>>) -> Self {
         Self { i: 0, tokens }
     }
+
 
     pub fn step(&mut self) -> &Token<'a> {
 
@@ -69,10 +79,60 @@ impl<'a> AST<'a> {
 
 
 
+
+
+
+
+
+    pub fn parse_block(&mut self, from: &str) -> Result<Vec<EXPR_Primi>, ZigurateError> {
+
+        let mut content: Vec<EXPR_Primi> = Vec::new();
+
+        if from == "gish" {
+
+            while self.see().is_some() {
+                
+                let tr_line = self.see();
+
+                match tr_line {
+                    Some(virg) => {
+
+                        let virg_val = from_utf8(virg.value)?.chars().next().unwrap();
+
+                        if virg_val == '-' {
+                            self.step();
+                        } else {
+                            break
+                        }
+
+                    }
+                    None => {
+                        break
+                    }
+                }
+
+                let tk_enums = self.parse_expr()?;
+                content.push(tk_enums);
+                continue;
+
+            }
+
+            Ok(content)
+
+        } else {
+            Ok(content)
+        }
+
+    }
+
+
+
+
     pub fn parse_properties(&mut self, from: &String) -> Result<EXPR_Primi, ZigurateError> {
 
         // case1: .prop1.prop2.prop3 =
         // case2: .prop1.prop2.prop3)
+        // case3: .Enumerator
 
         let mut props = Vec::new();
         props.push(from.to_string());
@@ -85,11 +145,11 @@ impl<'a> AST<'a> {
                 continue
             };
 
+            let val_tok = from_utf8(tok.value)?.chars().next().unwrap();
+
             match tok.primi {
 
                 Primi::Symbol => {
-
-                    let val_tok = from_utf8(tok.value)?.chars().next().unwrap();
                     
                     if val_tok == '=' || val_tok == ')' {
                         let expr = EXPR_Primi::PathProperties(props);
@@ -109,18 +169,27 @@ impl<'a> AST<'a> {
 
                     props.push(val_tok);
 
-                    self.step();
+                    if self.i < self.tokens.len() {
+                        self.step();
+
+                        let expr = EXPR_Primi::PathProperties(props);
+                        return Ok(expr)
+                    }
+
                     continue
 
                 }
 
-                _ => continue
+                _ => {
+                    let expr = EXPR_Primi::PathProperties(props);
+                    return Ok(expr)
+                }
 
             }
 
         }
 
-        let msg = format!("Found a SyntaxError in {}", from);
+        let msg = format!("Ocurred a syntax error in `{}`", from);
         Err(ZigurateError::SyntaxError(msg))
 
     }
@@ -181,6 +250,7 @@ impl<'a> AST<'a> {
 
         let tk = self.step();
 
+
         match tk.primi {
             
             Primi::String => {
@@ -223,23 +293,37 @@ impl<'a> AST<'a> {
 
                 let value = from_utf8(tk.value)?.to_string();
 
-                let tok_now = self.see().unwrap();
-                let tok_now_val = from_utf8(tok_now.value)?.chars().next().unwrap();
+                let tok_now = self.see();
 
-                match tok_now.primi {
-                    Primi::Symbol => {
-                        if tok_now_val == '.' {
-                            let expr = self.parse_properties(&value)?;
-                            Ok(expr)
-                        } else {
-                            let expr = EXPR_Primi::Identifier(value);
-                            Ok(expr) 
+                match tok_now {
+
+                    Some(tk) => {
+
+                        let tok_now_val = from_utf8(tk.value)?.chars().next().unwrap();
+
+                        match tk.primi {
+                            Primi::Symbol => {
+                                if tok_now_val == '.' {
+                                    let expr = self.parse_properties(&value)?;
+                                    Ok(expr)
+                                } else {
+                                    let expr = EXPR_Primi::Identifier(value);
+                                    Ok(expr) 
+                                }
+                            }
+                            _ => {
+                                let expr = EXPR_Primi::Identifier(value);
+                                Ok(expr) 
+                            }
                         }
+
                     }
-                    _ => {
+
+                    None => {
                         let expr = EXPR_Primi::Identifier(value);
                         Ok(expr) 
                     }
+
                 }
 
             },
@@ -286,7 +370,10 @@ impl<'a> AST<'a> {
                     let tr_cal_name = from_utf8(node.value)?.to_string(); // c1=name | c2=obj
 
                     let tok_now = self.see().unwrap();
+
                     let tok_now_val = from_utf8(tok_now.value)?.chars().next().unwrap();
+
+                    println!("{:?}", tok_now_val);
 
 
                     match tok_now.primi {
@@ -518,11 +605,101 @@ impl<'a> AST<'a> {
                 }
 
                 
+
+                Primi::Kwd_Maru => {
+
+                    // maru "test"
+
+                    // "test" ak id
+                    let tr_path = self.parse_expr()?;
+
+                    match tr_path {
+                        EXPR_Primi::String(path) => {
+
+                            let maru = TEMEM_Maru { path: path };
+                            let zilamma = STRT_Zilamma::Maru(maru);
+
+                            Ok(zilamma)
+
+                        }
+                        _ => {
+                            let msg = format!("Expected String as path after `maru`. Got `{:?}`", tr_path);
+                            return Err(ZigurateError::SyntaxError(msg))
+                        }
+                    }
+
+                }
+
+
+
+                Primi::Kwd_Gish => {
+
+                    let tr_gish_name = self.parse_expr()?;
+                    
+                    match tr_gish_name {
+                        EXPR_Primi::Identifier(gish_name) => {
+
+                            let tr_two_dots = self.step();
+                            let tr_two_dots_val = from_utf8(tr_two_dots.value)?.chars().next().unwrap();
+
+                            match tr_two_dots.primi {
+
+                                Primi::Symbol => {
+
+                                    if tr_two_dots_val == ':' {
+
+                                        let gish_content = self.parse_block("gish")?;
+
+                                        let gish = TEMEM_Gish { id: gish_name, enums: gish_content };
+                                        let zilamma = STRT_Zilamma::Gish(gish);
+
+                                        Ok(zilamma)
+
+                                    } else {
+
+                                        let msg = format!("`:` expected after {}.", gish_name);
+                                        return Err(ZigurateError::SyntaxError(msg))
+
+                                    }
+
+                                }
+                                 
+                                _ => {
+                                    let msg = format!("`:` expected after {}.", gish_name);
+                                    return Err(ZigurateError::SyntaxError(msg))
+                                }
+
+                            }
+
+                        }
+
+                        _ => {
+                            let msg = format!("Gish identifier expected. Got nil");
+                            return Err(ZigurateError::SyntaxError(msg))
+                        }
+                    }
+
+                }
+
                 _ => todo!()
 
             }
 
     }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

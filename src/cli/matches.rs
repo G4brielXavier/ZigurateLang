@@ -1,26 +1,20 @@
 use std::path::PathBuf;
 use std::println;
+
 use std::str::from_utf8;
 
 use colored::Colorize;
 
 use crate::cli::commands::Commands;
-
 use crate::tools::sita::Sita;
-
 use crate::core::error::ZigurateError;
-
-use crate::core::engine::tokenizer::Tokenizer;
-use crate::core::engine::ast::AST;
-
-use crate::enki_vm::compiler::enki_compiler;
-use crate::enki_vm::enki::{self, EnkiVM};
+use crate::enki_vm::enki::EnkiVM;
 
 use crate::cli::{
-    EnkiProject,
-
     get_enki_data
 };
+
+use crate::core::{zigurage_compiler_simple, zigurate_compiler_enki};
 
 
 
@@ -28,6 +22,10 @@ use crate::cli::{
 pub fn match_command(cmd: &Commands) -> Result<(), ZigurateError> {
 
     let sita = Sita::gibil();
+
+    let zigurate_name = format!("{}", "/|\\ ZIGURATE");
+    let status_stable = format!("{}", "(beta.2)".yellow().italic());
+    let version_zigurate = format!("{} — UR1 {}", zigurate_name.bold(), status_stable);
 
     match cmd {
 
@@ -69,42 +67,24 @@ pub fn match_command(cmd: &Commands) -> Result<(), ZigurateError> {
 
                     let enki_data = get_enki_data(&sita, &curr_path)?;
 
-                    let ur_info = format!("UR {}", enki_data.zigurate_ur);
-                    let title = format!("{} {}", "/|\\ ZIGURATE".bold(), ur_info.bold().italic());
                     let cmd = format!("enki run");
 
                     let msg_2 = format!("");
 
                     println!();
-                    println!("{}", title);
+                    println!("{}", version_zigurate);
                     println!("--- {} {} st.{}", "info:".bold().yellow(), enki_data.name.italic(), enki_data.stage.italic());
                     println!("--- {} {} {}", "cmd:".bold().yellow(), cmd.yellow().italic(), "!executed".bold().green());
                     println!("--- {} {}", "in:".bold().yellow(), curr_path.display().to_string().underline());
                     println!();
                     println!("{} {}", "Running EnkiVM...".bright_blue().bold(), msg_2);
 
-                    let mut tokenizer = Tokenizer::open(byte_content);
-                    let tokens = tokenizer.ignite();
+                    // MAIN
 
-                    // for i in tokens.iter() {
-                    //     println!("{:?}: {}", i.primi, from_utf8(i.value).unwrap());
-                    // }
+                    let enki_instructions = zigurage_compiler_simple(byte_content)?;
+                    let mut enki_vm = EnkiVM::on(enki_instructions);
 
-                    let mut ast = AST::open(tokens);
-                    let ast = ast.create()?;
-
-                    // println!("{:?}", ast);
-
-                    let sig_enki_byte = enki_compiler(ast)?;
-
-                    let mut enki_vm = EnkiVM::on(sig_enki_byte);
-
-                    // println!("{} {}", "Compiled!".bright_green().bold(), msg_2);
-                    println!();
-
-                    enki_vm.run();
-
-                    // println!("{:?}", enki_vm.instructions);
+                    zigurate_compiler_enki(&mut enki_vm)?;
 
                 },
                 Err(err) => {
@@ -147,28 +127,34 @@ pub fn match_command(cmd: &Commands) -> Result<(), ZigurateError> {
 
                 let _ = sita.edit_file(fil_enki, enki_content);
 
-                let title = format!("{}", "/|\\ ZIGURATE".bold());
                 let cmd = format!("enki create {}", project_name.yellow().italic());
 
+                let cmd2 = format!("cd .\\{}\\", project_name);
+
                 let msg_2 = format!("Project `{}` was created.", project_name.yellow().italic());
+                let msg_3 = format!("Now, use `{}`", cmd2.yellow().italic());
+                let msg_4 = format!("After, run `{}`", "enki run".yellow().italic());
 
                 println!();
-                println!("{}", title);
+                println!("{}", version_zigurate);
                 println!("--- {} {} {}", "cmd:".bold().yellow(), cmd.yellow().italic(), "!executed".bold().green());
                 println!("--- {} {}", "in:".bold().yellow(), curr_path.display().to_string().underline());
                 println!();
                 println!("{} {}", "success:".bright_green().bold(), msg_2);
+                
+                println!();
+                println!("{} {}", "tip:".bright_yellow().bold(), msg_3);
+                println!("{} {}", "tip:".bright_yellow().bold(), msg_4);
                 println!();
 
             } else {
 
-                let title = format!("{}", "/|\\ ZIGURATE".bold());
                 let cmd = format!("enki create {}", project_name);
 
-                let msg_2 = format!("Already exists a project called `{}`", project_name.bold());
+                let msg_2 = format!("Already exists a project called `{}`", project_name.yellow().italic());
                 
                 println!();
-                println!("{}", title);
+                println!("{}", version_zigurate);
                 println!("--- {} {} {}", "cmd:".bold().yellow(), cmd.yellow().italic(), "!not executed".bold().red());
                 println!("--- {} {}", "in:".bold().yellow(), curr_path.display().to_string().underline());
                 println!();

@@ -200,6 +200,10 @@ impl<'a> Tokenizer<'a> {
                 Primi::Boolean
             } else if self.zigu_table.kwd_anki == b_val {
                 Primi::Kwd_Anki
+            } else if self.zigu_table.kwd_maru == b_val {
+                Primi::Kwd_Maru
+            } else if self.zigu_table.kwd_gish == b_val {
+                Primi::Kwd_Gish
             } else {
                 Primi::Identifier
             };

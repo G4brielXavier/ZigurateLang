@@ -1,20 +1,31 @@
 
-use std::{println, todo};
+use std::{path::PathBuf, println};
 
 use crate::{core::{error::ZigurateError, utils::primi::SignalType}, enki_vm::{EnkiInstruction, UdaDeclarationType}};
-
 use crate::enki_vm::compiler::extr_udatype_string;
+use crate::core::zigurage_compiler_simple;
+use crate::cli::get_enki_data;
+use crate::tools::sita::Sita;
 
 use std::collections::HashMap;
 
-pub type UdaData = HashMap<String, UdaDeclarationType>;
+
+pub type UdaData   = HashMap<String, UdaDeclarationType>;
+pub type GishData  = HashMap<String, Vec<String>>;
 pub type LunigData = HashMap<String, HashMap<String, UdaDeclarationType>>;
+
+
+
 
 pub struct EnkiVM {
     instructions: Vec<EnkiInstruction>,
-    uda_hash: UdaData,
+
+    uda_hash  : UdaData,
     lunig_hash: LunigData,
-    ip: usize
+    gish_hash : GishData,
+
+    sita: Sita,
+    ip  : usize
 }
 
 impl EnkiVM {
@@ -22,15 +33,20 @@ impl EnkiVM {
     pub fn on(inst: Vec<EnkiInstruction>) -> Self {
         Self {
             instructions: inst,
-            uda_hash: HashMap::new(), 
+
+            uda_hash  : HashMap::new(), 
             lunig_hash: HashMap::new(),
-            ip: 0
+            gish_hash : HashMap::new(),
+
+            sita: Sita::gibil(),
+            ip  : 0
         }
     }
     
-    pub fn run(&mut self) {
+    pub fn run(&mut self) -> Result<(), ZigurateError> {
 
         while self.ip < self.instructions.len() {
+
             let instr = self.instructions[self.ip].clone();
             self.ip += 1;
 
@@ -47,9 +63,74 @@ impl EnkiVM {
                         let uda_captured = self.uda_hash.get(&uda_key)
                             .unwrap_or_else(|| panic!("{}", ZigurateError::UdaNotFound(uda_key)));
 
-                        let uda_value = extr_udatype_string(uda_captured);
+                        match uda_captured {
+                            UdaDeclarationType::PathProperties(props) => {
 
-                        println!("{}", uda_value);
+                                // case1: if is a lunig
+
+                                let from = &props[0];
+
+                                let lunig_found = self.lunig_hash.get(from);
+
+                                match lunig_found {
+                                    Some(lunig) => {
+
+                                        let prop = format!("!{}", &props[1]);
+
+                                        let value = lunig.get(&prop);
+
+                                        match value {
+                                            Some(val) => {
+
+                                                let lunig_value = extr_udatype_string(val);
+                                                println!("{}", lunig_value);
+
+                                            }
+                                            None => {
+                                                let msg = format!("Property `{}` not found in lunig `{}`", from, prop);
+                                                panic!("{}", ZigurateError::LunigPropertyNotFoundOrNotExist(msg));
+                                            }
+                                        }
+                                    }
+                                    None => {}
+                                }
+
+                                // case2: if is a gish
+
+                                let gish_found = self.gish_hash.get(from);
+
+                                match gish_found {
+                                    Some(gish) => {
+
+                                        let prop = format!("#{}", &props[1]);
+
+                                        let option_founded = gish.iter().find(|e| **e == prop);
+
+                                        match option_founded {
+                                            Some(v) => {
+                                                let rest = &v[1..];
+                                                println!("{}", rest);
+                                            }
+                                            None => {
+                                                let msg = format!("Option `{}` not found in gish called `{}`", prop, from);
+                                                panic!("{}", ZigurateError::GishOptionNotFound(msg));
+                                            }
+                                        }
+
+                                    }
+                                    None => { 
+                                        let msg = format!("Not found a gish called `{}`", from);
+                                        panic!("{}", ZigurateError::GishNotFound(msg));
+                                    }
+                                }
+
+
+                            }
+                            _ => {
+                                let uda_value = extr_udatype_string(uda_captured);
+                                println!("{}", uda_value);
+                            }
+                        }
 
                     } else {
                         println!("{}", val);
@@ -74,6 +155,7 @@ impl EnkiVM {
                     let rest = &val[1..];
 
                     // Verify if exist in Lunighash
+
                     let lunig_founded = self.lunig_hash.get(&k_start);
 
                     match lunig_founded {
@@ -100,8 +182,8 @@ impl EnkiVM {
 
                                     },
                                     None => {
-                                        let msg = format!("In lunig \"{}\", not found propertie \"{}\".", k_start, prop);
-                                        panic!("{}", ZigurateError::LunigAlreadyExist(msg))
+                                        let msg = format!("In lunig \"{}\", not found property \"{}\".", k_start, prop);
+                                        panic!("{}", ZigurateError::LunigPropertyNotFoundOrNotExist(msg))
                                     }
                                 }
 
@@ -176,6 +258,7 @@ impl EnkiVM {
 
 
 
+
                 EnkiInstruction::INST_LUNIG_EDIT(edit_lunig) => {
 
                     let lunig_founded = self.lunig_hash.get_mut(&edit_lunig.name);
@@ -207,7 +290,7 @@ impl EnkiVM {
                             
                             } else {
                                 let msg = format!("A lunig can accept only one propertie. To use more, see about `tud` in documentation.");
-                                panic!("{}", ZigurateError::LunigPropertieLimitExceeded(msg));
+                                panic!("{}", ZigurateError::LunigPropertyLimitExceeded(msg));
                             }
 
                         }
@@ -220,6 +303,7 @@ impl EnkiVM {
                     }
 
                 }
+
 
 
 
@@ -267,9 +351,9 @@ impl EnkiVM {
 
 
 
-                EnkiInstruction::INST_CUT_UDA(data) => {
 
-                    
+                EnkiInstruction::INST_CUT_UDA(data) => {
+  
                     if data.len() == 1 {
                         
                         let uda_comp_k = data[0].to_string();
@@ -308,6 +392,8 @@ impl EnkiVM {
 
 
 
+
+
                 EnkiInstruction::INST_GAZ_LUNIG(data) => {
 
                     if data.len() == 1 {
@@ -328,8 +414,75 @@ impl EnkiVM {
 
                 }
 
+
+
+
+
+
+
+                EnkiInstruction::INST_MARU(maru) => {
+
+                    let curr_path = self.sita.current_dir()
+                        .map_err(|e| ZigurateError::IOError(e))?;
+
+                    let forma_path = maru.path.replace("/", "\\");
+                    let enki_project_data =  get_enki_data(&self.sita, &curr_path)?;
+
+                    let sub_src: Vec<&str> = enki_project_data.main.split("/").collect();
+                    let path_file = curr_path.join(sub_src[0]).join(PathBuf::from(forma_path));
+
+                    let file_content = self.sita.read_file(path_file)
+                        .map_err(|e| ZigurateError::IOError(e))?;
+
+                    let bytes_content = file_content.as_bytes();
+
+                    let enki_instructions = zigurage_compiler_simple(bytes_content)?;
+
+                    let curr_ip = self.ip;
+
+                    for inst in enki_instructions.iter().rev() {
+                        self.instructions.insert(curr_ip, inst.clone());
+                    }
+
+                    // for i in self.instructions.iter() {
+                    //     println!("{:?}", i);
+                    // }
+
+                    self.run()?;
+
+                }
+            
+            
+
+
+
+
+
+                EnkiInstruction::INST_GISH(gish) => {
+
+                    let gish_found = self.gish_hash.get(&gish.id);
+
+                    match gish_found {
+                    
+                        Some(_) => {
+                            let msg = format!("Already exist a gish called `{}`", gish.id);
+                            panic!("{}", ZigurateError::GishAlreadyExist(msg));
+                        }
+                        None => {
+                            self.gish_hash.insert(gish.id.to_string(), gish.enums);
+                        }
+
+                    }
+
+                }
+
+            
             }
+
+
         }
+        Ok(())
 
     }
+
 }

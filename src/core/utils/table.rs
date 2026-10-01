@@ -2,11 +2,13 @@ pub struct Table {
 
     pub kwd_functions: [&'static [u8]; 3],
     pub kwd_variable:  [&'static [u8]; 1],
-    pub kwd_simple:    [&'static [u8]; 1],
+    pub kwd_simple:    [&'static [u8]; 2],
     pub kwd_special:    [&'static [u8]; 2],
-    pub symb:           &'static [u8; 5],
+    pub symb:           &'static [u8; 7],
     pub kwd_lunig:      &'static [u8],
-    pub kwd_anki:      &'static [u8]
+    pub kwd_anki:       &'static [u8],
+    pub kwd_maru:       &'static [u8],
+    pub kwd_gish:       &'static [u8],
 
 }
 
@@ -23,6 +25,7 @@ impl Table {
             ],
             kwd_simple: [
                 b"as",
+                b"ak"
             ],
             kwd_special: [
                 b"true",
@@ -30,7 +33,9 @@ impl Table {
             ],
             kwd_lunig: b"lunig",
             kwd_anki: b"anki",
-            symb: b"()=.:"
+            kwd_maru: b"maru",
+            kwd_gish: b"gish",
+            symb: b"()=.:,-"
         }
     }
 }

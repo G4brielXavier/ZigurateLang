@@ -1,5 +1,5 @@
 use crate::core::utils::structures::{
-    TEMEM_Anki, TEMEM_EditLunig, TEMEM_EditVariable, TEMEM_Function, TEMEM_Lunig, TEMEM_TempVariable
+    TEMEM_Anki, TEMEM_EditLunig, TEMEM_EditVariable, TEMEM_Function, TEMEM_Lunig, TEMEM_Maru, TEMEM_TempVariable, TEMEM_Gish
 };
 
 #[derive(Debug, PartialEq, Clone)]
@@ -16,6 +16,8 @@ pub enum Primi {
     kwd_Lunig,
     Kwd_Simple,
     Kwd_Anki,
+    Kwd_Maru,
+    Kwd_Gish,
 
     Identifier
 
@@ -30,7 +32,10 @@ pub enum STRT_Zilamma {
 
     DeclUda(TEMEM_TempVariable),
     DeclLunig(TEMEM_Lunig),
+
     Anki(TEMEM_Anki),
+    Maru(TEMEM_Maru),
+    Gish(TEMEM_Gish),
 
     EditLunig(TEMEM_EditLunig),
     EditUda(TEMEM_EditVariable)

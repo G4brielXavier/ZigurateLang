@@ -1,5 +1,7 @@
 
 use core::panic;
+use std::collections::HashMap;
+use std::fmt::format;
 use std::println;
 
 use crate::core::error::ZigurateError;
@@ -13,19 +15,29 @@ use crate::enki_vm::{
     LUNIG,
     UDA_EDIT,
     ANKI,
-    LUNIG_EDIT
+    LUNIG_EDIT,
+    MARU,
+    GISH
 };
 
 
-pub fn extr_expr_string(expr: EXPR_Primi) -> String {
+pub fn extr_expr_string(expr: EXPR_Primi, categ: &str) -> String {
 
     match expr {
         
-        EXPR_Primi::String(e) => e,
-        EXPR_Primi::Integer(i) => i.to_string(),
-        EXPR_Primi::Floating(f) => f.to_string(),
-        EXPR_Primi::Identifier(t) => format!("!{}", t),
-        EXPR_Primi::Boolean(t) => format!("{}", t),
+        EXPR_Primi::String    (e) => e,
+        EXPR_Primi::Integer   (i)    => i.to_string(),
+        EXPR_Primi::Floating  (f)    => f.to_string(),
+        EXPR_Primi::Identifier(t) => {
+            if categ == "uda" || categ == "lunig" {
+                return format!("!{}", t)
+            } else if categ == "gish" {
+                return format!("#{}", t)
+            } else {
+                return format!("!{}", t)
+            }
+        },
+        EXPR_Primi::Boolean   (t)   => format!("{}", t),
 
         _ => "".to_string()
     }
@@ -37,10 +49,10 @@ pub fn extr_udatype_string(udadecl: &UdaDeclarationType) -> String {
 
     match udadecl {
         
-        UdaDeclarationType::String(e) => e.to_string(),
-        UdaDeclarationType::Integer(i) => i.to_string(),
-        UdaDeclarationType::Floating(f) => f.to_string(),
-        UdaDeclarationType::Boolean(f) => f.to_string(),
+        UdaDeclarationType::String  (e) => e.to_string(),
+        UdaDeclarationType::Integer (i)    => i.to_string(),
+        UdaDeclarationType::Floating(f)    => f.to_string(),
+        UdaDeclarationType::Boolean (f)   => f.to_string(),
 
         _ => "".to_string()
     }
@@ -51,10 +63,11 @@ pub fn extr_udatype_string(udadecl: &UdaDeclarationType) -> String {
 pub fn convert_to_uda_declaration(expr: EXPR_Primi) -> UdaDeclarationType {
 
     match expr {
-        EXPR_Primi::String(e) => UdaDeclarationType::String(e),
-        EXPR_Primi::Integer(i) => UdaDeclarationType::Integer(i),
-        EXPR_Primi::Floating(f) => UdaDeclarationType::Floating(f),
-        EXPR_Primi::Boolean(f) => UdaDeclarationType::Boolean(f),
+        EXPR_Primi::String        (e)      => UdaDeclarationType::String(e),
+        EXPR_Primi::Integer       (i)         => UdaDeclarationType::Integer(i),
+        EXPR_Primi::Floating      (f)         => UdaDeclarationType::Floating(f),
+        EXPR_Primi::Boolean       (f)        => UdaDeclarationType::Boolean(f),
+        EXPR_Primi::PathProperties(f) => UdaDeclarationType::PathProperties(f),
 
         _ => UdaDeclarationType::String("".to_string())
     }
@@ -109,7 +122,7 @@ pub fn enki_compiler(ast: Vec<STRT_Zilamma>) -> Result<Vec<EnkiInstruction>, Zig
 
                                 _ => {
 
-                                    let arg = extr_expr_string(arg_i);
+                                    let arg = extr_expr_string(arg_i, "uda");
                                     let enki_sar = EnkiInstruction::INST_SILIM(arg);
                                     enkienes.push(enki_sar);
 
@@ -127,7 +140,7 @@ pub fn enki_compiler(ast: Vec<STRT_Zilamma>) -> Result<Vec<EnkiInstruction>, Zig
                         if args.len() == 1 {
 
                             let arg = args[0].clone();
-                            let expr = extr_expr_string(arg);
+                            let expr = extr_expr_string(arg, "uda");
 
                             let enki_sar = EnkiInstruction::INST_CUT_UDA(vec![expr]);
                             enkienes.push(enki_sar);
@@ -147,7 +160,7 @@ pub fn enki_compiler(ast: Vec<STRT_Zilamma>) -> Result<Vec<EnkiInstruction>, Zig
                         if args.len() == 1 {
 
                             let arg = args[0].clone();
-                            let expr = extr_expr_string(arg);
+                            let expr = extr_expr_string(arg, "lunig");
 
                             let enki_sar = EnkiInstruction::INST_GAZ_LUNIG(vec![expr]);
                             enkienes.push(enki_sar);
@@ -238,6 +251,33 @@ pub fn enki_compiler(ast: Vec<STRT_Zilamma>) -> Result<Vec<EnkiInstruction>, Zig
                 let enki_sar = EnkiInstruction::INST_ANKI(anki_m);
 
                 enkienes.push(enki_sar)
+
+            }
+
+            STRT_Zilamma::Maru(maru) => {
+
+                let maru_m = MARU { path: maru.path.clone() };
+                let enki_sar = EnkiInstruction::INST_MARU(maru_m);
+
+                enkienes.push(enki_sar);
+
+            }
+
+            STRT_Zilamma::Gish(gish) => {
+
+                let mut gish_vec = Vec::new();
+
+                for i in gish.enums.iter() {
+                    gish_vec.push(extr_expr_string(i.clone(), "gish"))
+                }
+
+                let gish_m = GISH {
+                    id: gish.id.clone(),
+                    enums: gish_vec
+                };
+
+                let enki_sar = EnkiInstruction::INST_GISH(gish_m);
+                enkienes.push(enki_sar);
 
             }
 

@@ -102,12 +102,47 @@ pub struct ANKI {
 
 
 
+
+#[derive(Debug, Clone)]
+pub struct MARU {
+    pub path: String,
+}
+
+
+
+
+
+
+
+
+
+#[derive(Debug, Clone)]
+pub struct GISH {
+    pub id: String,
+    pub enums: Vec<String>
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum UdaDeclarationType {
     String(String),
     Integer(i32),
     Floating(f32),
-    Boolean(bool)
+    Boolean(bool),
+    PathProperties(Vec<String>)
 }
 
 
@@ -128,17 +163,19 @@ pub enum EnkiInstruction {
 
     INST_UDA_DECL(UDA), // uda name = value
     
-    INST_CUT_UDA(Vec<String>),
-    INST_GAZ_LUNIG(Vec<String>),
+    INST_CUT_UDA(Vec<String>), // anki.:kud(uda_name)
+    INST_GAZ_LUNIG(Vec<String>), // anki.:gaz(lunig_name)
 
-    INST_UDA_EDIT(UDA_EDIT),
-    INST_LUNIG_EDIT(LUNIG_EDIT),
+    INST_UDA_EDIT(UDA_EDIT), // uda_name = new_value
+    INST_LUNIG_EDIT(LUNIG_EDIT), // lunig.prop = new_value
 
 
     INST_LUNIG_DECL(LUNIG), // lunig "Name" as name
     
-    INST_ANKI(ANKI),
+    INST_ANKI(ANKI), // anki.:func()
 
+    INST_MARU(MARU), // maru "./" ak id
 
+    INST_GISH(GISH), // gish GishName: - GISH
 
 }

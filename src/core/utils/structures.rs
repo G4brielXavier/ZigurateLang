@@ -88,3 +88,35 @@ pub struct TEMEM_EditLunig {
 pub struct TEMEM_Anki {
     pub fnc: Box<STRT_Zilamma>
 }
+
+
+
+
+
+
+
+
+
+
+
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct TEMEM_Maru {
+    pub path: String,
+}
+
+
+
+
+
+
+
+
+
+
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct TEMEM_Gish {
+    pub id: String,
+    pub enums: Vec<EXPR_Primi>
+}
